@@ -33,12 +33,19 @@ class OptimizeRequest(BaseModel):
     """Request model for regression optimization."""
     csv_path: str = Field(..., description="Path to CSV testcase data")
     log_path: Optional[str] = Field(None, description="Optional path to simulation log")
+    coverage_report_path: Optional[str] = Field(None, description="Optional path to coverage report")
+    enable_load_optimizer: bool = Field(True, description="Enable resource load optimization")
+    enable_llm_copilot: bool = Field(False, description="Enable LLM-powered insights")
+    llm_api_key: Optional[str] = Field(None, description="API key for LLM provider")
     
     class Config:
         schema_extra = {
             "example": {
                 "csv_path": "rag_training_data.csv",
-                "log_path": "sim.log"
+                "log_path": "sim.log",
+                "coverage_report_path": "coverage.rpt",
+                "enable_load_optimizer": True,
+                "enable_llm_copilot": False
             }
         }
 
@@ -109,7 +116,11 @@ async def optimize_regression(request: OptimizeRequest) -> Dict:
         # Run optimization
         agent = RegressionManagerAgent(
             csv_path=str(csv_path),
-            log_path=request.log_path
+            log_path=request.log_path,
+            coverage_report_path=request.coverage_report_path,
+            enable_load_optimizer=request.enable_load_optimizer,
+            enable_llm_copilot=request.enable_llm_copilot,
+            llm_api_key=request.llm_api_key
         )
         
         result = agent.run()
@@ -250,3 +261,187 @@ async def update_config(request: ConfigUpdateRequest) -> Dict:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+class ChatRequest(BaseModel):
+    """Request model for copilot chat."""
+    message: str = Field(..., description="User message")
+    context: Optional[Dict] = Field(None, description="Optional context")
+    llm_api_key: Optional[str] = Field(None, description="API key for LLM")
+
+
+class ResourceConfigRequest(BaseModel):
+    """Request model for resource configuration."""
+    cpu_units: int = Field(16, description="Number of CPU cores")
+    gpu_units: int = Field(4, description="Number of GPUs")
+    cloud_units: int = Field(100, description="Number of cloud instances")
+
+
+@app.post("/copilot/chat")
+async def copilot_chat(request: ChatRequest) -> Dict:
+    """
+    Chat with the regression testing copilot.
+    
+    Args:
+        request: Chat request with message and context
+        
+    Returns:
+        Copilot response
+    """
+    try:
+        from .llm_copilot import RegressionCopilot
+        
+        copilot = RegressionCopilot(api_key=request.llm_api_key)
+        response = copilot.chat(request.message, request.context)
+        
+        return {
+            "response": response,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Copilot chat failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/copilot/explain-test")
+async def explain_test(test_data: Dict, llm_api_key: Optional[str] = None) -> Dict:
+    """
+    Get explanation for a test's score.
+    
+    Args:
+        test_data: Test information
+        llm_api_key: Optional API key
+        
+    Returns:
+        Explanation of test score
+    """
+    try:
+        from .llm_copilot import RegressionCopilot
+        
+        copilot = RegressionCopilot(api_key=llm_api_key)
+        explanation = copilot.explain_test_score(test_data)
+        
+        return {
+            "explanation": explanation,
+            "test_id": test_data.get('testcase_id', 'unknown')
+        }
+        
+    except Exception as e:
+        logger.error(f"Test explanation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/resources/configure")
+async def configure_resources(request: ResourceConfigRequest) -> Dict:
+    """
+    Configure available resources for load optimization.
+    
+    Args:
+        request: Resource configuration
+        
+    Returns:
+        Configuration confirmation
+    """
+    try:
+        from .load_optimizer import LoadOptimizer
+        
+        optimizer = LoadOptimizer()
+        optimizer.configure_resources(
+            cpu_units=request.cpu_units,
+            gpu_units=request.gpu_units,
+            cloud_units=request.cloud_units
+        )
+        
+        return {
+            "status": "configured",
+            "resources": {
+                "cpu": request.cpu_units,
+                "gpu": request.gpu_units,
+                "cloud": request.cloud_units
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Resource configuration failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/resources/usage")
+async def get_resource_usage() -> Dict:
+    """
+    Get current resource usage statistics.
+    
+    Returns:
+        Resource usage report
+    """
+    try:
+        # This would typically query a database or monitoring system
+        # For now, return example data
+        return {
+            "servers": [
+                {
+                    "server_id": "cpu_server_1",
+                    "resource_type": "cpu",
+                    "utilization": 75.5,
+                    "tests_running": 8,
+                    "status": "active"
+                },
+                {
+                    "server_id": "gpu_server_1",
+                    "resource_type": "gpu",
+                    "utilization": 92.3,
+                    "tests_running": 3,
+                    "status": "active"
+                }
+            ],
+            "summary": {
+                "total_servers": 6,
+                "active_servers": 5,
+                "average_utilization": 68.4
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Resource usage query failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/coverage/parse")
+async def parse_coverage(
+    coverage_file: UploadFile = File(...),
+    report_type: str = "auto"
+) -> Dict:
+    """
+    Parse coverage report file.
+    
+    Args:
+        coverage_file: Coverage report file
+        report_type: Type of report (vcs, questa, xcelium, auto)
+        
+    Returns:
+        Parsed coverage data
+    """
+    try:
+        from .coverage_parser import CoverageParser
+        
+        # Save uploaded file
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / coverage_file.filename
+            with open(file_path, 'wb') as f:
+                content = await coverage_file.read()
+                f.write(content)
+            
+            # Parse coverage
+            parser = CoverageParser(str(file_path), report_type=report_type)
+            coverage_data = parser.parse()
+            
+            return {
+                "coverage": coverage_data,
+                "report_type": parser.report_type,
+                "filename": coverage_file.filename
+            }
+            
+    except Exception as e:
+        logger.error(f"Coverage parsing failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

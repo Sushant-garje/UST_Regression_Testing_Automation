@@ -14,6 +14,9 @@ from .feature_engineering import FeatureEngineer
 from .redundancy_detector import RedundancyDetector
 from .scoring_engine import ScoringEngine
 from .prioritization_engine import PrioritizationEngine
+from .load_optimizer import LoadOptimizer
+from .coverage_parser import CoverageParser
+from .llm_copilot import RegressionCopilot
 
 logger = logging.getLogger(__name__)
 
@@ -26,19 +29,44 @@ class RegressionManagerAgent:
     redundancy detection, and prioritization.
     """
     
-    def __init__(self, csv_path: str, log_path: Optional[str] = None):
+    def __init__(self, csv_path: str, log_path: Optional[str] = None, 
+                 coverage_report_path: Optional[str] = None,
+                 enable_load_optimizer: bool = True,
+                 enable_llm_copilot: bool = False,
+                 llm_api_key: Optional[str] = None):
         """
         Initialize regression manager agent.
         
         Args:
             csv_path: Path to CSV testcase data
             log_path: Optional path to simulation log file
+            coverage_report_path: Optional path to coverage report
+            enable_load_optimizer: Enable resource load optimization
+            enable_llm_copilot: Enable LLM-powered copilot
+            llm_api_key: API key for LLM provider
         """
         self.csv_path = csv_path
         self.log_path = log_path
+        self.coverage_report_path = coverage_report_path
+        self.enable_load_optimizer = enable_load_optimizer
+        self.enable_llm_copilot = enable_llm_copilot
+        
         self.df = None
         self.ranked_tests = None
         self.excluded_tests = None
+        self.resource_allocation = None
+        self.coverage_data = None
+        
+        # Initialize optional components
+        if enable_load_optimizer:
+            self.load_optimizer = LoadOptimizer()
+        else:
+            self.load_optimizer = None
+            
+        if enable_llm_copilot:
+            self.copilot = RegressionCopilot(api_key=llm_api_key)
+        else:
+            self.copilot = None
         
     def run(self) -> Dict:
         """
@@ -64,8 +92,20 @@ class RegressionManagerAgent:
         # Step 5: Prioritize tests
         df_prioritized = self._prioritize_tests(df)
         
-        # Step 6: Generate output
+        # Step 6: Parse coverage reports (if available)
+        if self.coverage_report_path:
+            self.coverage_data = self._parse_coverage()
+        
+        # Step 7: Optimize resource allocation (if enabled)
+        if self.enable_load_optimizer and self.load_optimizer:
+            df_prioritized = self._optimize_resources(df_prioritized)
+        
+        # Step 8: Generate output
         result = self._generate_output(df_prioritized, df)
+        
+        # Step 9: LLM analysis (if enabled)
+        if self.enable_llm_copilot and self.copilot:
+            result['llm_insights'] = self.copilot.analyze_regression_results(result)
         
         logger.info("Regression Manager Agent completed successfully")
         
@@ -131,6 +171,27 @@ class RegressionManagerAgent:
         
         return df_prioritized
     
+    def _parse_coverage(self) -> Dict:
+        """Parse coverage reports."""
+        logger.info("Parsing coverage reports")
+        
+        parser = CoverageParser(self.coverage_report_path)
+        coverage_data = parser.parse()
+        
+        return coverage_data
+    
+    def _optimize_resources(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Optimize resource allocation."""
+        logger.info("Optimizing resource allocation")
+        
+        df_with_resources = self.load_optimizer.allocate_tests(df)
+        self.resource_allocation = {
+            'server_usage': self.load_optimizer.get_server_usage_report().to_dict('records'),
+            'cost_estimate': self.load_optimizer.estimate_cost()
+        }
+        
+        return df_with_resources
+    
     def _generate_output(self, df_prioritized: pd.DataFrame, df_all: pd.DataFrame) -> Dict:
         """Generate final output structure."""
         logger.info("Generating output")
@@ -149,5 +210,13 @@ class RegressionManagerAgent:
                 'optimization_ratio': round(selected_tests / total_tests, 2) if total_tests > 0 else 0
             }
         }
+        
+        # Add resource allocation if available
+        if self.resource_allocation:
+            result['resource_allocation'] = self.resource_allocation
+        
+        # Add coverage data if available
+        if self.coverage_data:
+            result['coverage_analysis'] = self.coverage_data
         
         return result
