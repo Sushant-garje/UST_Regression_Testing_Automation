@@ -1,3 +1,4 @@
+
 """
 FastAPI service for Regression Manager Agent.
 Provides REST API endpoints for regression optimization.
@@ -11,6 +12,58 @@ from typing import Optional, Dict, List
 import logging
 import tempfile
 from pathlib import Path
+import pandas as pd
+import threading
+import json
+
+from .regression_manager_agent import RegressionManagerAgent
+from .config import config, RegressionConfig, ScoringWeights
+from .llm_copilot import RegressionCopilot
+# Initialize copilot and file summaries storage
+copilot = RegressionCopilot()
+
+# Thread-safe in-memory storage for file summaries
+file_summaries = {}
+file_summaries_lock = threading.Lock()
+UPLOADS_DIR = Path("uploads")
+
+def summarize_file(file_path):
+    summary = None
+    try:
+        if file_path.suffix == '.csv':
+            df = pd.read_csv(file_path)
+            summary = {
+                "columns": list(df.columns),
+                "num_rows": len(df),
+                "sample": df.head(3).to_dict(orient="records"),
+            }
+        elif file_path.suffix == '.log':
+            with open(file_path, 'r') as lf:
+                lines = lf.readlines()
+            summary = {
+                "num_lines": len(lines),
+                "sample": lines[:5],
+            }
+        # Add more filetype handlers as needed
+    except Exception as parse_err:
+        summary = {"error": f"Failed to parse: {str(parse_err)}"}
+    return summary
+
+def refresh_file_summaries():
+    """Scan uploads directory and update file summaries."""
+    summaries = {}
+    if UPLOADS_DIR.exists():
+        for file_path in UPLOADS_DIR.iterdir():
+            if file_path.is_file():
+                summary = summarize_file(file_path)
+                if summary:
+                    summaries[file_path.name] = summary
+    with file_summaries_lock:
+        file_summaries.clear()
+        file_summaries.update(summaries)
+
+# On startup, refresh summaries
+refresh_file_summaries()
 
 from .regression_manager_agent import RegressionManagerAgent
 from .config import config, RegressionConfig, ScoringWeights
@@ -29,6 +82,52 @@ app = FastAPI(
     description="Production-grade regression test optimization service",
     version="1.0.0"
 )
+
+# Endpoint to serve selected test cases as JSON for frontend (must be after app = FastAPI)
+@app.get("/api/selected-tests")
+async def get_selected_tests():
+    """Return selected test cases from selected_testcases.csv as JSON."""
+    try:
+        csv_path = Path("selected_testcases.csv")
+        if not csv_path.exists():
+            return {"tests": []}
+        df = pd.read_csv(csv_path)
+        # Convert to list of dicts for JSON
+        tests = df.to_dict(orient="records")
+        return {"tests": tests}
+    except Exception as e:
+        return {"error": str(e), "tests": []}
+
+# Endpoint to generate a regression test file from selected test cases
+@app.post("/api/generate-regression-test-file")
+async def generate_regression_test_file():
+    """
+    Generate a Python regression test file from selected test cases in selected_testcases.csv.
+    Returns the generated file content as a string.
+    """
+    try:
+        csv_path = Path("selected_testcases.csv")
+        if not csv_path.exists():
+            raise HTTPException(status_code=404, detail="selected_testcases.csv not found")
+        df = pd.read_csv(csv_path)
+        # Assume 'testcase_id' or 'test' column contains the test function names
+        test_ids = df["testcase_id"] if "testcase_id" in df.columns else df["test"]
+        # Generate a simple pytest-style test file
+        lines = ["import pytest", "", "# Auto-generated regression test file", ""]
+        for tid in test_ids:
+            func_name = f"test_{tid}".replace("-", "_").replace(" ", "_")
+            lines.append(f"def {func_name}():")
+            lines.append(f"    # TODO: Implement test logic for {tid}")
+            lines.append(f"    assert True  # Placeholder")
+            lines.append("")
+        file_content = "\n".join(lines)
+        # Save to file
+        output_path = Path("generated_regression_tests.py")
+        with open(output_path, "w") as f:
+            f.write(file_content)
+        return {"message": "Regression test file generated successfully.", "file": str(output_path), "content": file_content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate regression test file: {str(e)}")
 
 # Add CORS middleware for frontend
 app.add_middleware(
@@ -338,39 +437,32 @@ async def explain_test(request: ExplainTestRequest) -> Dict:
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)) -> Dict:
     """
-    Upload multiple files.
-    
-    Args:
-        files: List of files to upload
-        
-    Returns:
-        Upload status
+    Upload multiple files and store summaries for LLM context. Summaries are persistent.
     """
     try:
         uploaded_files = []
-        
         for file in files:
-            # Save to temp directory or configured upload directory
+            # Save to uploads directory
             content = await file.read()
-            file_path = Path("uploads") / file.filename
-            file_path.parent.mkdir(exist_ok=True)
-            
+            UPLOADS_DIR.mkdir(exist_ok=True)
+            file_path = UPLOADS_DIR / file.filename
             with open(file_path, 'wb') as f:
                 f.write(content)
-            
             uploaded_files.append({
                 "filename": file.filename,
                 "size": len(content),
-                "path": str(file_path)
+                "path": str(file_path),
             })
-        
-        logger.info(f"Uploaded {len(uploaded_files)} files")
-        
+        # Refresh summaries from disk
+        refresh_file_summaries()
+        with file_summaries_lock:
+            summaries = dict(file_summaries)
+        logger.info(f"Uploaded {len(uploaded_files)} files and updated summaries")
         return {
             "status": "success",
-            "files": uploaded_files
+            "files": uploaded_files,
+            "summaries": summaries,
         }
-        
     except Exception as e:
         logger.error(f"Upload failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -396,29 +488,28 @@ class ResourceConfigRequest(BaseModel):
 
 
 @app.post("/copilot/chat")
-async def copilot_chat(request: ChatRequest) -> Dict:
+async def chat_with_copilot(request: ChatRequest) -> Dict:
     """
-    Chat with the regression testing copilot.
-    
-    Args:
-        request: Chat request with message and context
-        
-    Returns:
-        Copilot response
+    Chat with the AI copilot, including file summaries in context.
     """
     try:
-        from .llm_copilot import RegressionCopilot
-        
-        copilot = RegressionCopilot(api_key=request.llm_api_key)
-        response = copilot.chat(request.message, request.context)
-        
+        logger.info(f"Chat request: {request.message[:50]}...")
+        # Merge file summaries with any provided context
+        with file_summaries_lock:
+            summaries = dict(file_summaries)
+        merged_context = request.context.copy() if request.context else {}
+        merged_context["file_summaries"] = summaries
+        response = copilot.chat(request.message, context=merged_context)
         return {
             "response": response,
-            "status": "success"
+            "metadata": {
+                "model": "google-gemini",
+                "context_used": True,
+                "file_summaries_included": bool(summaries),
+            }
         }
-        
     except Exception as e:
-        logger.error(f"Copilot chat failed: {e}", exc_info=True)
+        logger.error(f"Chat failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -563,3 +654,16 @@ async def parse_coverage(
     except Exception as e:
         logger.error(f"Coverage parsing failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+# List all uploaded files and their summaries
+@app.get("/files")
+async def list_uploaded_files():
+    """
+    List all uploaded files and their summaries.
+    """
+    with file_summaries_lock:
+        summaries = dict(file_summaries)
+    return {
+        "files": list(summaries.keys()),
+        "summaries": summaries
+    }

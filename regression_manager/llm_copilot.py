@@ -207,52 +207,57 @@ Provide a list of 5-10 critical modules with brief justification.
     def chat(self, user_message: str, context: Optional[Dict] = None) -> str:
         """
         Chat interface for regression testing questions.
-        
-        Args:
-            user_message: User's question or command
-            context: Optional context (test results, configuration, etc.)
-            
-        Returns:
-            Copilot response
+        Always lists uploaded files if present in context.
         """
         if not self.client:
             return "LLM client not initialized. Please configure API key."
-        
+
         # Build conversation context
         system_prompt = """You are a VLSI regression testing expert copilot. 
-You help engineers optimize regression test suites, analyze coverage, 
-allocate resources, and improve verification efficiency.
+    You help engineers optimize regression test suites, analyze coverage, 
+    allocate resources, and improve verification efficiency.
 
-You have access to:
-- Test execution history
-- Coverage reports
-- Resource utilization data
-- Failure patterns
+    You have access to:
+    - Test execution history
+    - Coverage reports
+    - Resource utilization data
+    - Failure patterns
 
-Provide concise, actionable advice."""
-        
+    If you are given a list of uploaded files in the context, always clearly list them in your answer if the user asks about uploaded files, file names, or file summaries. If the user asks 'What files are uploaded?' or a similar question, directly answer with the list of uploaded files you see in the context, without asking for more context. If file summaries are present, include them in your answer if relevant.
+
+    Provide concise, actionable advice."""
+
+        # If file_summaries are present in context, always mention them
+        file_list_str = ""
+        if context and "file_summaries" in context and context["file_summaries"]:
+            file_names = list(context["file_summaries"].keys())
+            if file_names:
+                file_list_str = "\n\nUploaded files detected:" + ''.join(f"\n- {name}" for name in file_names)
         # Add context if provided
         if context:
             context_str = f"\n\nCurrent Context:\n{json.dumps(context, indent=2)}"
             user_message = user_message + context_str
-        
+        # Prepend file list to user message if present
+        if file_list_str:
+            user_message = file_list_str + "\n" + user_message
+
         # Add to conversation history
         self.conversation_history.append({
             'role': 'user',
             'content': user_message
         })
-        
+
         try:
             response = self._call_llm_chat(system_prompt, self.conversation_history)
-            
+
             # Add response to history
             self.conversation_history.append({
                 'role': 'assistant',
                 'content': response
             })
-            
+
             return response
-            
+
         except Exception as e:
             logger.error(f"Chat failed: {e}")
             return f"Error: {str(e)}"

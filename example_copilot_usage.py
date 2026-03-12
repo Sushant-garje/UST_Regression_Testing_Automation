@@ -13,7 +13,6 @@ from regression_manager.coverage_parser import CoverageParser
 
 # Load environment variables from .env file
 load_dotenv()
-from regression_manager.coverage_parser import
 
 
 

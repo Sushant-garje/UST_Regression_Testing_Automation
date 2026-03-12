@@ -131,6 +131,10 @@ class LoadOptimizer:
         Returns:
             Series with complexity labels (low, medium, high)
         """
+        # Ensure columns are numeric to avoid TypeError
+        tests_df = tests_df.copy()
+        tests_df['runtime_seconds'] = pd.to_numeric(tests_df['runtime_seconds'], errors='coerce')
+        tests_df['coverage'] = pd.to_numeric(tests_df['coverage'], errors='coerce')
         # Use runtime and coverage as complexity indicators
         runtime_q75 = tests_df['runtime_seconds'].quantile(0.75)
         coverage_q75 = tests_df['coverage'].quantile(0.75)
@@ -156,7 +160,11 @@ class LoadOptimizer:
             TestAllocation object
         """
         complexity = test['complexity']
-        runtime = test['runtime_seconds']
+        # Ensure runtime is float for arithmetic
+        try:
+            runtime = float(test['runtime_seconds'])
+        except Exception:
+            runtime = 0.0
         priority = test['priority_rank']
         
         # Allocation strategy
@@ -205,7 +213,12 @@ class LoadOptimizer:
             }
         
         self.server_usage[server_id]['tests_allocated'] += 1
-        self.server_usage[server_id]['total_runtime'] += estimated_runtime
+        # Ensure estimated_runtime is float to avoid TypeError
+        try:
+            est_runtime_float = float(estimated_runtime)
+        except Exception:
+            est_runtime_float = 0.0
+        self.server_usage[server_id]['total_runtime'] += est_runtime_float
         
         return allocation
     

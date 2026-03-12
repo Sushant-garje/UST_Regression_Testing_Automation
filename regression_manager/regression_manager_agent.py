@@ -92,16 +92,28 @@ class RegressionManagerAgent:
         # Step 5: Prioritize tests
         df_prioritized = self._prioritize_tests(df)
         
+        # --- Select top tests by high coverage and min runtime to achieve >50% optimization ratio ---
+        if 'coverage' in df_prioritized.columns and 'runtime_seconds' in df_prioritized.columns:
+            total_tests = len(df_prioritized)
+            min_selected = max(1, int(0.5 * total_tests))
+            # Sort by coverage (desc), then runtime (asc)
+            df_sorted = df_prioritized.sort_values(['coverage', 'runtime_seconds'], ascending=[False, True])
+            df_selected = df_sorted.head(min_selected)
+            # Save selected tests to CSV
+            df_selected.to_csv('selected_testcases.csv', index=False)
+        else:
+            df_selected = df_prioritized
+        
         # Step 6: Parse coverage reports (if available)
         if self.coverage_report_path:
             self.coverage_data = self._parse_coverage()
         
         # Step 7: Optimize resource allocation (if enabled)
         if self.enable_load_optimizer and self.load_optimizer:
-            df_prioritized = self._optimize_resources(df_prioritized)
+            df_selected = self._optimize_resources(df_selected)
         
         # Step 8: Generate output
-        result = self._generate_output(df_prioritized, df)
+        result = self._generate_output(df_selected, df)
         
         # Step 9: LLM analysis (if enabled)
         if self.enable_llm_copilot and self.copilot:

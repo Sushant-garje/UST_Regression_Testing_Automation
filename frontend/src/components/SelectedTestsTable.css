@@ -1,0 +1,29 @@
+.selected-tests-table-wrapper {
+  margin: 2rem 0;
+  background: var(--panel-bg, #18181b);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.selected-tests-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.selected-tests-table th, .selected-tests-table td {
+  border: 1px solid #333;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.selected-tests-table th {
+  background: #222;
+  color: #fff;
+}
+.selected-tests-table tr:nth-child(even) {
+  background: #23272f;
+}
+.selected-tests-table-empty {
+  color: #888;
+  padding: 1rem;
+  text-align: center;
+}

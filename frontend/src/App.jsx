@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
+
 import ChatInterface from './components/ChatInterface'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import FileUploadModal from './components/FileUploadModal'
 import VisualizationPanel from './components/VisualizationPanel'
+import SelectedTestsDisplay from './SelectedTestsDisplay'
 import './App.css'
 
 function App() {
@@ -33,6 +35,22 @@ function App() {
     setVisualizationOpen(true)
   }
 
+  // Fetch files from backend on mount
+  useEffect(() => {
+    async function fetchFiles() {
+      try {
+        const res = await fetch('/api/files');
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentFiles(data.files.map(name => ({ name })));
+        }
+      } catch (err) {
+        // Optionally handle error
+      }
+    }
+    fetchFiles();
+  }, []);
+
   return (
     <div className="app">
       <Header 
@@ -41,7 +59,6 @@ function App() {
         onUploadClick={() => setUploadModalOpen(true)}
         onVisualizationClick={() => setVisualizationOpen(!visualizationOpen)}
       />
-      
       <div className="app-body">
         <Sidebar 
           isOpen={sidebarOpen}
@@ -49,7 +66,6 @@ function App() {
           currentFiles={currentFiles}
           chatHistory={chatHistory}
         />
-        
         <div className="main-content">
           <ChatInterface 
             theme={theme}
@@ -58,7 +74,10 @@ function App() {
             chatHistory={chatHistory}
             setChatHistory={setChatHistory}
           />
-          
+          {/* Show selected test cases table below chat interface */}
+          <div style={{marginTop: '2rem'}}>
+            <SelectedTestsDisplay />
+          </div>
           {visualizationOpen && optimizationResults && (
             <VisualizationPanel 
               results={optimizationResults}
@@ -67,7 +86,6 @@ function App() {
           )}
         </div>
       </div>
-
       {uploadModalOpen && (
         <FileUploadModal 
           onClose={() => setUploadModalOpen(false)}
@@ -78,4 +96,4 @@ function App() {
   )
 }
 
-export default App
+export default App;
