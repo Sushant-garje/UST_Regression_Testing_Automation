@@ -331,7 +331,51 @@ curl -X POST "http://localhost:8000/resources/configure" \
 
 ## 📋 Input Data Format
 
-### CSV Format (Required)
+### ✨ NEW: Flexible CSV Support
+
+The system now **automatically handles ANY CSV format** with intelligent column mapping!
+
+### Supported Formats
+
+**Format 1: Standard VLSI**
+```csv
+module,test,seed,result,coverage,sim_time
+jk_ff,test,1,PASS,95.0,145
+```
+
+**Format 2: Simple Test**
+```csv
+TestID,Status,Coverage(%)
+1,PASS,31.94
+```
+
+**Format 3: Custom**
+```csv
+Module,TestName,Result,Cov,Runtime
+cpu,test1,PASSED,87.5,120
+```
+
+### Automatic Column Detection
+
+The system recognizes these column variations:
+- **Test ID**: test, Test, TestID, test_name, TestName
+- **Status**: result, Result, status, Status, pass_fail
+- **Coverage**: coverage, Coverage, cov, Coverage(%)
+- **Runtime**: sim_time, runtime, Runtime, time
+
+### Intelligent Defaults
+
+Missing columns are filled automatically:
+- **module** → Uses filename
+- **test** → Uses row numbers
+- **seed** → Defaults to 1
+- **result** → Defaults to PASS
+- **coverage** → Defaults to 50.0
+- **sim_time** → Uses incremental values
+
+See [CSV_FORMAT_GUIDE.md](CSV_FORMAT_GUIDE.md) for details.
+
+### CSV Format (Legacy - Still Supported)
 
 ```csv
 module,test,seed,rtl_version,git_commit,result,coverage,sim_time,test_runtime

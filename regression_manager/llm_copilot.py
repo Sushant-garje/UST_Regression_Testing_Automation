@@ -31,7 +31,7 @@ class RegressionCopilot:
         """
         self.api_key = api_key or os.getenv('GOOGLE_API_KEY')
         self.conversation_history = []
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = "gemini-2.5-flash-lite"
         
         # Initialize Gemini client
         self._init_gemini_client()
@@ -55,7 +55,7 @@ class RegressionCopilot:
                 "temperature": 0.7,
                 "top_p": 0.95,
                 "top_k": 40,
-                "max_output_tokens": 2048,
+                "max_output_tokens": 8192,  # Increased for longer responses
             }
             
             safety_settings = [
@@ -269,11 +269,23 @@ Provide concise, actionable advice."""
             # Generate response
             response = self.model.generate_content(full_prompt)
             
+            # Check if response was blocked or empty
+            if not response.text:
+                logger.warning("Empty response from Gemini")
+                return ""
+            
             return response.text
             
         except Exception as e:
-            logger.error(f"Gemini API call failed: {e}")
-            return f"Error calling Gemini: {str(e)}"
+            error_msg = str(e)
+            logger.error(f"Gemini API call failed: {error_msg}")
+            
+            # Check for quota errors
+            if "quota" in error_msg.lower() or "429" in error_msg:
+                logger.warning("⚠️ Gemini API quota exceeded. Using fallback mode.")
+                return ""
+            
+            return ""
     
     def _call_llm_chat(self, system_prompt: str, messages: List[Dict]) -> str:
         """Call Gemini with conversation history."""

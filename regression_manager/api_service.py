@@ -5,6 +5,7 @@ Provides REST API endpoints for regression optimization.
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List
 import logging
@@ -13,6 +14,7 @@ from pathlib import Path
 
 from .regression_manager_agent import RegressionManagerAgent
 from .config import config, RegressionConfig, ScoringWeights
+from .llm_copilot import RegressionCopilot
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +30,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Add CORS middleware for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize copilot
+copilot = RegressionCopilot()
+
 
 class OptimizeRequest(BaseModel):
     """Request model for regression optimization."""
@@ -41,8 +55,8 @@ class OptimizeRequest(BaseModel):
     class Config:
         schema_extra = {
             "example": {
-                "csv_path": "rag_training_data.csv",
-                "log_path": "sim.log",
+                "csv_path": "8bitadder.csv",
+                "log_path": "sim(8-bitAdder).log",
                 "coverage_report_path": "coverage.rpt",
                 "enable_load_optimizer": True,
                 "enable_llm_copilot": False
@@ -256,6 +270,110 @@ async def update_config(request: ConfigUpdateRequest) -> Dict:
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class ChatRequest(BaseModel):
+    """Request model for chat endpoint."""
+    message: str = Field(..., description="User message")
+    context: Optional[Dict] = Field(None, description="Additional context")
+
+
+class ExplainTestRequest(BaseModel):
+    """Request model for test explanation."""
+    test_data: Dict = Field(..., description="Test data to explain")
+
+
+@app.post("/copilot/chat")
+async def chat_with_copilot(request: ChatRequest) -> Dict:
+    """
+    Chat with the AI copilot.
+    
+    Args:
+        request: Chat request with message and context
+        
+    Returns:
+        Response from copilot
+    """
+    try:
+        logger.info(f"Chat request: {request.message[:50]}...")
+        
+        response = copilot.chat(request.message)
+        
+        return {
+            "response": response,
+            "metadata": {
+                "model": "google-gemini",
+                "context_used": bool(request.context)
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Chat failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/copilot/explain-test")
+async def explain_test(request: ExplainTestRequest) -> Dict:
+    """
+    Get explanation for a test score.
+    
+    Args:
+        request: Test data to explain
+        
+    Returns:
+        Explanation of test score
+    """
+    try:
+        explanation = copilot.explain_test_score(request.test_data)
+        
+        return {
+            "explanation": explanation
+        }
+        
+    except Exception as e:
+        logger.error(f"Explanation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/upload")
+async def upload_files(files: List[UploadFile] = File(...)) -> Dict:
+    """
+    Upload multiple files.
+    
+    Args:
+        files: List of files to upload
+        
+    Returns:
+        Upload status
+    """
+    try:
+        uploaded_files = []
+        
+        for file in files:
+            # Save to temp directory or configured upload directory
+            content = await file.read()
+            file_path = Path("uploads") / file.filename
+            file_path.parent.mkdir(exist_ok=True)
+            
+            with open(file_path, 'wb') as f:
+                f.write(content)
+            
+            uploaded_files.append({
+                "filename": file.filename,
+                "size": len(content),
+                "path": str(file_path)
+            })
+        
+        logger.info(f"Uploaded {len(uploaded_files)} files")
+        
+        return {
+            "status": "success",
+            "files": uploaded_files
+        }
+        
+    except Exception as e:
+        logger.error(f"Upload failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

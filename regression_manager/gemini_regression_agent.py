@@ -161,13 +161,12 @@ Respond in JSON format:
         
         try:
             response = self.copilot._call_llm(prompt, "You are a VLSI verification expert.")
-            logger.info(f"Gemini response received (length: {len(response)})")
-            logger.debug(f"Response preview: {response[:500]}")
             # Extract JSON from response
             analysis = self._extract_json_from_response(response)
             if not analysis:
                 logger.warning("Empty analysis from Gemini, using fallback")
                 return self._fallback_analysis(df)
+            logger.info(f"✅ Gemini analysis successful: Quality Score {analysis.get('quality_score', 'N/A')}")
             return analysis
         except Exception as e:
             logger.error(f"Gemini analysis failed: {e}")
@@ -220,7 +219,12 @@ Select the top 30-40% of tests that provide maximum coverage value.
         try:
             response = self.copilot._call_llm(prompt, "You are a VLSI verification expert.")
             result = self._extract_json_from_response(response)
-            return result.get('high_coverage_tests', [])
+            if result and 'high_coverage_tests' in result:
+                logger.info(f"✅ Gemini identified {len(result['high_coverage_tests'])} high-coverage tests")
+                return result.get('high_coverage_tests', [])
+            else:
+                logger.warning("No high-coverage tests from Gemini, using fallback")
+                return self._fallback_high_coverage(df)
         except Exception as e:
             logger.error(f"Gemini high-coverage selection failed: {e}")
             return self._fallback_high_coverage(df)
@@ -278,7 +282,12 @@ Be conservative - only exclude truly redundant tests.
         try:
             response = self.copilot._call_llm(prompt, "You are a VLSI verification expert.")
             result = self._extract_json_from_response(response)
-            return result.get('redundant_tests', [])
+            if result and 'redundant_tests' in result:
+                logger.info(f"✅ Gemini identified {len(result['redundant_tests'])} redundant tests")
+                return result.get('redundant_tests', [])
+            else:
+                logger.warning("No redundant tests from Gemini, using fallback")
+                return self._fallback_redundant(df)
         except Exception as e:
             logger.error(f"Gemini redundancy detection failed: {e}")
             return self._fallback_redundant(df)
@@ -341,7 +350,12 @@ Respond with JSON:
         try:
             response = self.copilot._call_llm(prompt, "You are a VLSI verification expert.")
             result = self._extract_json_from_response(response)
-            return result.get('prioritized_tests', [])
+            if result and 'prioritized_tests' in result:
+                logger.info(f"✅ Gemini prioritized {len(result['prioritized_tests'])} tests")
+                return result.get('prioritized_tests', [])
+            else:
+                logger.warning("No prioritized tests from Gemini, using fallback")
+                return self._fallback_prioritize(df)
         except Exception as e:
             logger.error(f"Gemini prioritization failed: {e}")
             return self._fallback_prioritize(df)
@@ -373,8 +387,8 @@ Respond with JSON:
                 'testcase_id': test_id,
                 'module_name': row['module_name'],
                 'coverage': float(row['coverage']),
-                'runtime_seconds': float(row['runtime_seconds']),
-                'pass_rate': float(row['pass_rate']),
+                'runtime_seconds': float(row.get('runtime_seconds', row.get('sim_time', 100))),  # Fallback to sim_time or default
+                'pass_rate': float(row.get('pass_rate', 1.0)),  # Default to 1.0 if missing
                 'priority': priority,
                 'high_coverage': test_id in high_coverage_set,
                 'gemini_reason': priority_info.get('reason', 'Standard test')
@@ -404,33 +418,53 @@ Respond with JSON:
     def _extract_json_from_response(self, response: str) -> Dict:
         """Extract JSON from Gemini's response."""
         try:
-            logger.debug(f"Full response length: {len(response)}")
-            logger.debug(f"First 500 chars: {response[:500]}")
-            logger.debug(f"Last 200 chars: {response[-200:]}")
-            
             # Remove markdown code blocks if present
-            cleaned = response.replace('```json', '').replace('```', '').strip()
+            cleaned = response.strip()
             
-            # Try to find JSON in response - handle multi-line JSON
+            # Handle markdown code blocks
+            if '```json' in cleaned:
+                # Extract content between ```json and ```
+                start_marker = cleaned.find('```json') + 7
+                end_marker = cleaned.find('```', start_marker)
+                if end_marker > start_marker:
+                    cleaned = cleaned[start_marker:end_marker].strip()
+            elif '```' in cleaned:
+                # Generic code block
+                start_marker = cleaned.find('```') + 3
+                end_marker = cleaned.find('```', start_marker)
+                if end_marker > start_marker:
+                    cleaned = cleaned[start_marker:end_marker].strip()
+            
+            # Try to find JSON object boundaries
             start = cleaned.find('{')
             end = cleaned.rfind('}') + 1
             
-            logger.debug(f"JSON boundaries: start={start}, end={end}")
-            
             if start >= 0 and end > start:
                 json_str = cleaned[start:end]
-                logger.debug(f"Extracted JSON length: {len(json_str)}")
-                # Clean up the JSON string - remove extra whitespace but preserve structure
                 result = json.loads(json_str)
-                logger.info(f"✅ Successfully extracted JSON with keys: {list(result.keys())}")
+                logger.info(f"✅ Successfully extracted JSON with {len(result)} keys")
                 return result
             else:
-                # No JSON found, log the response for debugging
-                logger.warning(f"❌ No JSON found. Response length: {len(response)}, preview: {response[:300]}")
+                logger.warning(f"❌ No JSON boundaries found in response (length: {len(response)})")
                 return {}
         except json.JSONDecodeError as e:
+            # Try to fix common JSON issues
+            if 'json_str' in locals():
+                logger.warning(f"JSON decode error at position {e.pos}: {e.msg}")
+                # Try to salvage partial JSON by finding the last complete object
+                try:
+                    # Find the last complete closing brace before the error
+                    partial = json_str[:e.pos]
+                    last_complete = partial.rfind('}')
+                    if last_complete > 0:
+                        # Try to close the array and object
+                        fixed_json = json_str[:last_complete+1] + ']}'
+                        result = json.loads(fixed_json)
+                        logger.info(f"✅ Recovered partial JSON with {len(result)} keys")
+                        return result
+                except:
+                    pass
             logger.error(f"❌ JSON decode error: {e}")
-            logger.error(f"Attempted to parse: {json_str[:500] if 'json_str' in locals() else 'N/A'}")
             return {}
         except Exception as e:
             logger.error(f"❌ Failed to extract JSON: {e}")

@@ -62,6 +62,11 @@ class IntegratedRegressionCopilot:
         logger.info("INTEGRATED REGRESSION COPILOT - COMPLETE WORKFLOW")
         logger.info("=" * 80)
         
+        # Check if Gemini is available
+        if not self.gemini_agent.copilot.model:
+            logger.warning("⚠️  Gemini API not available - using fallback mode")
+            logger.warning("⚠️  Set GOOGLE_API_KEY environment variable to enable AI features")
+        
         # Phase 1: Gemini-powered test selection
         logger.info("\n[PHASE 1] Gemini AI: Test Selection & Prioritization")
         logger.info("-" * 80)

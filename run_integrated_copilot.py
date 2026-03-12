@@ -21,8 +21,8 @@ def main():
     # Initialize integrated copilot
     print("Initializing copilot...")
     copilot = IntegratedRegressionCopilot(
-        csv_path='rag_training_data.csv',
-        log_path='sim.log'
+        csv_path='8bitadder.csv',
+        log_path='sim(8-bitAdder).log'
     )
     
     # Configure resources
