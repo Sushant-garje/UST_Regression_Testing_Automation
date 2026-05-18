@@ -1,0 +1,44 @@
+{
+  "half_adder": {
+    "source": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/19 aprilt/half_adder_dataset.csv",
+    "output": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/normalized_half_adder.csv",
+    "rows": 1000,
+    "status": "success"
+  },
+  "4bit_sub": {
+    "source": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/19 aprilt/4bit_sub_logs,makefile,results/results/results_1.csv",
+    "output": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/normalized_4bit_sub.csv",
+    "rows": 500,
+    "status": "success"
+  },
+  "register_comparator": {
+    "source": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/19 aprilt/reg_comparator_logs_makefile_result/results/results_1.csv",
+    "output": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/normalized_register_comparator.csv",
+    "rows": 256,
+    "status": "success"
+  },
+  "reg_downcounter": {
+    "source": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/19 aprilt/reg_downcounter_logs_makefile_results/results/results_1.csv",
+    "output": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/normalized_reg_downcounter.csv",
+    "rows": 50,
+    "status": "success"
+  },
+  "t_flip_flop": {
+    "source": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/19 aprilt/t_ff_dataset.csv",
+    "output": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/normalized_t_flip_flop.csv",
+    "rows": 920,
+    "status": "success"
+  },
+  "8bit_alu": {
+    "source": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/19 aprilt/8bitalu_logs_makefile_res/results/alu_results_seed_1.csv",
+    "output": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/normalized_8bit_alu.csv",
+    "rows": 507,
+    "status": "success"
+  },
+  "jk_flip_flop": {
+    "source": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/selected_testcases.csv",
+    "output": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/normalized_jk_flip_flop.csv",
+    "rows": 1,
+    "status": "success"
+  }
+}

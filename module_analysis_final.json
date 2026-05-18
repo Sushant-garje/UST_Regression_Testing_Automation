@@ -1,0 +1,29 @@
+{
+  "Half Adder": {
+    "total_tests": 1000,
+    "selected_tests": 20,
+    "excluded_tests": 980,
+    "reduction_percent": 98.0,
+    "avg_coverage": 68.55,
+    "total_runtime": 268.0,
+    "pass_rate": 1.0
+  },
+  "Register Comparator": {
+    "total_tests": 256,
+    "selected_tests": 37,
+    "excluded_tests": 219,
+    "reduction_percent": 85.546875,
+    "avg_coverage": 59.31324324324325,
+    "total_runtime": 15775000.0,
+    "pass_rate": 1.0
+  },
+  "8-bit ALU": {
+    "total_tests": 507,
+    "selected_tests": 507,
+    "excluded_tests": 0,
+    "reduction_percent": 0.0,
+    "avg_coverage": 50.0,
+    "total_runtime": 5070.0,
+    "pass_rate": 0.0
+  }
+}

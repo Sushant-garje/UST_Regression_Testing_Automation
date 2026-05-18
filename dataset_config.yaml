@@ -1,0 +1,161 @@
+# ================================
+# 📊 DATASET CONFIGURATION
+# ================================
+# Update paths below for each module's new or updated dataset
+# Then run: python3 normalize_datasets.py && python3 export_optimized_tests.py
+#
+# Date Last Updated: April 19, 2026
+# ================================
+
+# ✅ ACTIVE MODULES - Update these paths
+modules:
+  
+  half_adder:
+    enabled: true
+    # Path to your new/updated Half Adder dataset
+    input_path: "19 aprilt/half_adder_dataset.csv"
+    # Or use absolute path: "/Users/sushant/Downloads/new_half_adder.csv"
+    description: "Half Adder - 2-bit addition circuit"
+    expected_tests: 20
+
+  4bit_sub:
+    enabled: true
+    input_path: "19 aprilt/4bit_sub_logs,makefile,results/results/results_1.csv"
+    description: "4-bit Subtractor circuit"
+    expected_tests: 37
+
+  register_comparator:
+    enabled: true
+    input_path: "19 aprilt/reg_comparator_logs_makefile_result/results/results_1.csv"
+    description: "Register Comparator circuit"
+    expected_tests: 37
+
+  reg_downcounter:
+    enabled: true
+    input_path: "19 aprilt/reg_downcounter_logs_makefile_results/results/results_1.csv"
+    description: "Register Downcounter circuit"
+    expected_tests: 20
+
+  t_flip_flop:
+    enabled: true
+    input_path: "19 aprilt/t_ff_dataset.csv"
+    description: "T Flip-Flop - 1-bit memory element"
+    expected_tests: 918
+
+  8bit_alu:
+    enabled: true
+    input_path: "19 aprilt/8bitalu_logs_makefile_res/results/alu_results_seed_1.csv"
+    description: "8-bit Arithmetic Logic Unit"
+    expected_tests: 507
+
+  jk_flip_flop:
+    enabled: true
+    input_path: "selected_testcases.csv"
+    description: "JK Flip-Flop - Advanced bistable"
+    expected_tests: 1
+
+  register_counter:
+    enabled: false
+    input_path: "19 aprilt/reg_COUNTER_LOG_makefile_result/results/regression_report.csv"
+    description: "Register Counter - currently disabled (data format issue)"
+    expected_tests: "TBD"
+
+# ================================
+# 🔧 OUTPUT CONFIGURATION
+# ================================
+output:
+  lightweight_format: "optimized_testcases/"
+  # ↑ Use this for fast execution (9 columns)
+  
+  full_data_format: "optimized_testcases_full/"
+  # ↑ Use this for debugging (14-20 columns with full traceability)
+
+# ================================
+# 📝 HOW TO USE THIS FILE
+# ================================
+# 
+# SCENARIO 1: Update Single Module
+# ─────────────────────────────────
+# Change this:
+#   half_adder:
+#     input_path: "half_adder_dataset.csv"
+#
+# To this (absolute path):
+#   half_adder:
+#     input_path: "/Users/sushant/Downloads/new_half_adder_tests.csv"
+#
+# Then run pipeline (it auto-detects format):
+#   python3 normalize_datasets.py && python3 export_optimized_tests.py && python3 export_with_full_data.py
+#
+# ─────────────────────────────────
+#
+# SCENARIO 2: Update Multiple Modules
+# ─────────────────────────────────
+# Just update all paths at once:
+#   half_adder:
+#     input_path: "/path/to/new/half_adder.csv"
+#   4bit_sub:
+#     input_path: "/path/to/new/4bit_sub.csv"
+#   register_comparator:
+#     input_path: "/path/to/new/register_comp.csv"
+#
+# Then run full pipeline (all modules update in 5-10 seconds)
+#
+# ─────────────────────────────────
+#
+# SCENARIO 3: Disable a Module Temporarily
+# ─────────────────────────────────
+# Change:
+#   register_counter:
+#     enabled: false
+#
+# To:
+#   register_counter:
+#     enabled: true
+#
+# Script will skip disabled modules (even if file is missing)
+#
+# ─────────────────────────────────
+#
+# SCENARIO 4: Use Relative vs Absolute Paths
+# ─────────────────────────────────
+# 
+# RELATIVE PATH (file in project folder):
+#   input_path: "new_data.csv"
+#   input_path: "14 april/results/data.csv"
+#
+# ABSOLUTE PATH (file anywhere on system):
+#   input_path: "/Users/sushant/Downloads/data.csv"
+#   input_path: "/Volumes/ExternalDrive/data/module.csv"
+
+# ================================
+# 📂 EXAMPLE PATHS FOR REFERENCE
+# ================================
+#
+# If you have files in Downloads:
+#   input_path: "/Users/sushant/Downloads/new_half_adder.csv"
+#
+# If you have files in Dropbox:
+#   input_path: "~/Dropbox/VLSI/new_t_flip_flop.csv"
+#
+# If you have files in project subfolders:
+#   input_path: "new_datasets/half_adder.csv"
+#   input_path: "uploads/4bit_sub.csv"
+#
+# If you have results from CI/CD pipeline:
+#   input_path: "19 april/8bitalu_logs_makefile_res/results/latest.csv"
+
+# ================================
+# ⚙️ NEXT STEPS
+# ================================
+#
+# 1. Update the input_path for module(s) with new data
+# 2. Run the pipeline:
+#    python3 normalize_datasets.py && python3 export_optimized_tests.py && python3 export_with_full_data.py
+# 3. Check results:
+#    ls -lh optimized_testcases/
+#    ls -lh optimized_testcases_full/
+# 4. Use the optimized CSVs in your tests
+#
+# That's it! 🚀
+

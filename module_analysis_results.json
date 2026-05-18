@@ -1,0 +1,50 @@
+{
+  "JK_FF": {
+    "status": "error",
+    "error": "The column label 'runtime_seconds' is not unique."
+  },
+  "T_FF": {
+    "status": "success",
+    "total": 0,
+    "selected": 0,
+    "excluded": 0,
+    "reduction_percent": 0,
+    "redundant": 0
+  },
+  "Half_Adder": {
+    "status": "error",
+    "error": "'testcase_id'"
+  },
+  "4bit_Subtractor": {
+    "status": "error",
+    "error": "'testcase_id'"
+  },
+  "Register_Comparator": {
+    "status": "error",
+    "error": "'testcase_id'"
+  },
+  "8bit_ALU": {
+    "status": "success",
+    "total": 0,
+    "selected": 0,
+    "excluded": 0,
+    "reduction_percent": 0,
+    "redundant": 0
+  },
+  "Register_Counter": {
+    "status": "success",
+    "total": 0,
+    "selected": 0,
+    "excluded": 0,
+    "reduction_percent": 0,
+    "redundant": 0
+  },
+  "Register_Downcounter": {
+    "status": "success",
+    "total": 0,
+    "selected": 0,
+    "excluded": 0,
+    "reduction_percent": 0,
+    "redundant": 0
+  }
+}

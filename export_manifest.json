@@ -1,0 +1,10 @@
+{
+  "output_directory": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases",
+  "total_modules": 3,
+  "exported_files": {
+    "Half Adder": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases/optimized_half_adder.csv",
+    "Register Comparator": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases/optimized_register_comparator.csv",
+    "8-bit ALU": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases/optimized_8_bit_alu.csv"
+  },
+  "timestamp": "2026-04-19T19:48:52.377537"
+}

@@ -1,0 +1,25 @@
+{
+  "export_type": "Full Data with All Original Columns + Scoring",
+  "output_directory": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases_full",
+  "modules_processed": {
+    "Half Adder": {
+      "status": "success",
+      "output_file": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases_full/optimized_half_adder_full.csv",
+      "tests_exported": 20,
+      "total_columns": 16
+    },
+    "Register Comparator": {
+      "status": "success",
+      "output_file": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases_full/optimized_register_comparator_full.csv",
+      "tests_exported": 37,
+      "total_columns": 20
+    },
+    "8-bit ALU": {
+      "status": "success",
+      "output_file": "/Users/sushant/Documents/engineering/Industry Project/harsh/UST/optimized_testcases_full/optimized_8_bit_alu_full.csv",
+      "tests_exported": 507,
+      "total_columns": 16
+    }
+  },
+  "timestamp": "2026-04-19T19:48:52.799720"
+}
